@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Athena | Enterprise Library</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { primary: '#6366f1', darkbg: '#0f172a', darkpanel: '#1e293b' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; transition: background 0.3s, color 0.3s; }
+        
+        /* Glassmorphism */
+        .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
+        .dark .glass-panel { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Animations */
+        .fade-enter { animation: fadeEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Sidebar Active State */
+        .nav-item.active { background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-darkbg dark:text-gray-100 h-screen flex overflow-hidden selection:bg-indigo-500 selection:text-white">
+
+    <aside class="w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col z-20 shadow-xl transition-all">
+        <div class="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-slate-800">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">A</div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight">ATHENA</h1>
+                
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <div onclick="router('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 transition-all group">
+                <i class="fa-solid fa-chart-pie w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="font-medium">Dashboard</span>
+            </div>
+            <div onclick="router('inventory')" id="nav-inventory" class="nav-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 transition-all group">
+                <i class="fa-solid fa-book w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="font-medium">Inventory</span>
+            </div>
+            <div onclick="router('students')" id="nav-students" class="nav-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 transition-all group">
+                <i class="fa-solid fa-users w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="font-medium">Students</span>
+            </div>
+            <div onclick="router('settings')" id="nav-settings" class="nav-item flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 transition-all group">
+                <i class="fa-solid fa-gear w-6 text-center group-hover:scale-110 transition-transform"></i> <span class="font-medium">Settings</span>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100 dark:border-slate-800">
+            <div class="bg-gradient-to-br from-slate-800 to-black rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-white opacity-10 rounded-full blur-xl"></div>
+                <h4 class="text-sm font-bold mb-1">System Status</h4>
+                <div class="flex items-center gap-2 text-xs">
+                    <span id="status-dot" class="w-2 h-2 bg-blue-500 rounded-full"></span> 
+                    <span id="status-text" class="text-gray-300">Simulation Mode</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        <header class="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-6 z-10">
+            <h2 id="page-title" class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Dashboard</h2>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center hover:bg-gray-200 transition">
+                    <i id="theme-icon" class="fa-solid fa-moon dark:hidden text-gray-600"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-yellow-400"></i>
+                </button>
+                <div class="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-slate-700">
+                    <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">AU</div>
+                    <div class="hidden md:block">
+                        <p class="text-sm font-bold leading-none dark:text-gray-200">Admin User</p>
+                        <p class="text-xs text-gray-500">Super Admin</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="app-container" class="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 relative">
+            
+            <div id="view-dashboard" class="view-section fade-enter space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Assets</p>
+                        <h3 id="dash-total" class="text-4xl font-extrabold text-gray-800 dark:text-white mt-1">--</h3>
+                        <div class="mt-4 flex items-center text-xs font-medium text-green-500 bg-green-500/10 w-fit px-2 py-1 rounded-lg">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i> +12% this month
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 w-24 h-24 bg-orange-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Issued Books</p>
+                        <h3 id="dash-issued" class="text-4xl font-extrabold text-gray-800 dark:text-white mt-1">--</h3>
+                        <div class="mt-4 flex items-center text-xs font-medium text-orange-500 bg-orange-500/10 w-fit px-2 py-1 rounded-lg">
+                            <i class="fa-solid fa-circle-exclamation mr-1"></i> Needs Return
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 w-24 h-24 bg-pink-500/10 rounded-bl-full transition-transform group-hover:scale-110"></div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Students</p>
+                        <h3 id="dash-students" class="text-4xl font-extrabold text-gray-800 dark:text-white mt-1">--</h3>
+                        <div class="mt-4 flex items-center text-xs font-medium text-blue-500 bg-blue-500/10 w-fit px-2 py-1 rounded-lg">
+                            <i class="fa-solid fa-user-plus mr-1"></i> 5 new today
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 glass-panel p-6 rounded-2xl shadow-sm">
+                        <h4 class="font-bold text-lg mb-4 dark:text-white">Analytics Overview</h4>
+                        <div class="h-64"><canvas id="mainChart"></canvas></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl shadow-sm">
+                        <h4 class="font-bold text-lg mb-4 dark:text-white">Quick Actions</h4>
+                        <button onclick="openModal('bookModal')" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/30 transition-all active:scale-95 mb-3 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Add New Book
+                        </button>
+                        <button onclick="openModal('studentModal')" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 dark:text-white">
+                            <i class="fa-solid fa-user-plus"></i> Register Student
+                        </button>
+                        
+                        <h5 class="font-bold text-sm mt-6 mb-3 text-gray-400 uppercase tracking-wider">Recent Activity</h5>
+                        <div id="activity-feed" class="space-y-3">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-inventory" class="view-section hidden fade-enter space-y-6">
+                <div class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm">
+                    <div class="relative w-96">
+                        <i class="fa-solid fa-search absolute left-4 top-3.5 text-gray-400"></i>
+                        <input type="text" id="search-books" onkeyup="renderBooks()" placeholder="Search by title, author, category..." class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white">
+                    </div>
+                    <button onclick="openModal('bookModal')" class="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-md transition-all">
+                        <i class="fa-solid fa-plus mr-2"></i> Add Book
+                    </button>
+                </div>
+
+                <div class="glass-panel rounded-2xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 font-semibold">
+                            <tr>
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Book Details</th>
+                                <th class="p-4">Category</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-gray-100 dark:divide-slate-800">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-students" class="view-section hidden fade-enter space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">Registered Students</h3>
+                    <button onclick="openModal('studentModal')" class="py-2 px-4 bg-indigo-600 text-white rounded-lg text-sm">New Student</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="students-grid">
+                    </div>
+            </div>
+
+            <div id="view-settings" class="view-section hidden fade-enter max-w-2xl mx-auto">
+                <div class="glass-panel p-8 rounded-2xl shadow-sm">
+                    <h3 class="text-2xl font-bold mb-6 dark:text-white">System Preferences</h3>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                            <div>
+                                <h4 class="font-bold dark:text-white">Dark Appearance</h4>
+                                <p class="text-sm text-gray-500">Switch between day and night themes.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="toggle-dark" onchange="toggleTheme()" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="bookModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl p-6 transform transition-all scale-100">
+            <h3 class="text-xl font-bold mb-4 dark:text-white">Add New Asset</h3>
+            <form onsubmit="handleFormSubmit(event, 'add_book')" class="space-y-4">
+                <input type="text" name="title" placeholder="Book Title" required class="modal-input">
+                <input type="text" name="author" placeholder="Author Name" required class="modal-input">
+                <select name="category" class="modal-input">
+                    <option>Computer Science</option>
+                    <option>Physics</option>
+                    <option>Literature</option>
+                    <option>History</option>
+                </select>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal('bookModal')" class="flex-1 py-3 bg-gray-100 dark:bg-slate-800 rounded-xl font-medium hover:bg-gray-200 dark:text-white">Cancel</button>
+                    <button type="submit" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="studentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <h3 class="text-xl font-bold mb-4 dark:text-white">Register Student</h3>
+            <form onsubmit="handleFormSubmit(event, 'add_student')" class="space-y-4">
+                <input type="text" name="name" placeholder="Full Name" required class="modal-input">
+                <input type="email" name="email" placeholder="Email Address" required class="modal-input">
+                <input type="text" name="dept" placeholder="Department (e.g. CS)" required class="modal-input">
+                <div class="flex gap-3 mt-6">
+                    <button type="button" onclick="closeModal('studentModal')" class="flex-1 py-3 bg-gray-100 dark:bg-slate-800 rounded-xl font-medium hover:bg-gray-200 dark:text-white">Cancel</button>
+                    <button type="submit" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STORE ---
+        let db = {
+            books: [
+                {id: 1, title: "Clean Code", author: "Robert C. Martin", category: "Computer Science", status: "Available"},
+                {id: 2, title: "The Pragmatic Programmer", author: "Andrew Hunt", category: "Computer Science", status: "Issued"},
+                {id: 3, title: "Dune", author: "Frank Herbert", category: "Literature", status: "Available"},
+                {id: 4, title: "Atomic Habits", author: "James Clear", category: "Self Help", status: "Available"},
+                {id: 5, title: "Introduction to Algorithms", author: "Thomas H. Cormen", category: "Computer Science", status: "Issued"}
+            ],
+            students: [
+                {id: 1, name: "Alice Johnson", email: "alice@uni.edu", dept: "CS"},
+                {id: 2, name: "Bob Smith", email: "bob@uni.edu", dept: "Physics"}
+            ],
+            activity: []
+        };
+
+        // --- HYBRID INIT ---
+        async function initApp() {
+            try {
+                let formData = new FormData(); formData.append('action', 'get_all');
+                let res = await fetch('api.php', { method: 'POST', body: formData });
+                
+                if (res.ok) {
+                    let data = await res.json();
+                    if(data.books) db.books = data.books;
+                    if(data.students) db.students = data.students;
+                    document.getElementById('status-text').innerText = "Online (AWS)";
+                    document.getElementById('status-text').classList.add('text-green-400');
+                    document.getElementById('status-dot').className = "w-2 h-2 bg-green-400 rounded-full animate-pulse";
+                } else { throw new Error("Local"); }
+            } catch (e) {
+                console.log("Running in Simulation Mode");
+            }
+            renderAll();
+        }
+
+        // --- ACTIONS ---
+        async function handleFormSubmit(e, action) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                formData.append('action', action);
+                let res = await fetch('api.php', { method: 'POST', body: formData });
+                if (res.ok) { await initApp(); } else { throw new Error("Local"); }
+            } catch (err) {
+                if(action === 'add_book') db.books.unshift({id: Date.now(), title: formData.get('title'), author: formData.get('author'), category: formData.get('category'), status: 'Available'});
+                if(action === 'add_student') db.students.push({id: Date.now(), name: formData.get('name'), email: formData.get('email'), dept: formData.get('dept')});
+                renderAll();
+            }
+            closeModal('bookModal'); closeModal('studentModal');
+            Swal.fire('Success', 'Record Added', 'success');
+        }
+
+        async function toggleStatus(id) {
+            try {
+                let formData = new FormData(); formData.append('action', 'toggle_status'); formData.append('id', id);
+                let res = await fetch('api.php', { method: 'POST', body: formData });
+                if (res.ok) { await initApp(); } else { throw new Error("Local"); }
+            } catch (e) {
+                let b = db.books.find(x => x.id === id); b.status = b.status === 'Available' ? 'Issued' : 'Available';
+                db.activity.unshift({ text: `${b.status === 'Issued' ? 'Issued' : 'Returned'}: ${b.title}`, time: "Just now", icon: "fa-exchange-alt", color: "text-indigo-500" });
+                renderAll();
+            }
+        }
+
+        // --- RENDERERS ---
+        function renderAll() {
+            renderDashboard(); renderBooks(); renderStudents();
+        }
+
+        function renderDashboard() {
+            document.getElementById('dash-total').innerText = db.books.length;
+            document.getElementById('dash-issued').innerText = db.books.filter(b => b.status === 'Issued').length;
+            document.getElementById('dash-students').innerText = db.students.length;
+
+            const feed = document.getElementById('activity-feed');
+            feed.innerHTML = db.activity.map(a => `
+                <div class="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                    <div class="mt-1"><i class="fa-solid ${a.icon} ${a.color}"></i></div>
+                    <div><p class="text-sm font-medium dark:text-gray-200">${a.text}</p><p class="text-xs text-gray-400">${a.time}</p></div>
+                </div>
+            `).join('');
+
+            const ctx = document.getElementById('mainChart');
+            if(window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{ label: 'Issued', data: [12, 19, 3, 5, 2, 3, 15], borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', fill: true, tension: 0.4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+            });
+        }
+
+        function renderBooks() {
+            const query = document.getElementById('search-books').value.toLowerCase();
+            const tbody = document.getElementById('inventory-table-body');
+            tbody.innerHTML = db.books.filter(b => b.title.toLowerCase().includes(query)).map(b => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition border-b border-gray-100 dark:border-slate-800">
+                    <td class="p-4 text-gray-400 text-sm">#${b.id}</td>
+                    <td class="p-4"><p class="font-bold text-gray-800 dark:text-gray-100">${b.title}</p><p class="text-xs text-gray-500">${b.author}</p></td>
+                    <td class="p-4"><span class="px-2 py-1 rounded text-xs bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 font-medium">${b.category}</span></td>
+                    <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-medium ${b.status === 'Available' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${b.status}</span></td>
+                    <td class="p-4 text-right">
+                        <button onclick="toggleStatus(${b.id})" class="text-xs px-3 py-1.5 rounded-lg border ${b.status === 'Available' ? 'bg-indigo-600 text-white border-transparent' : 'border-gray-200 dark:border-slate-600 text-gray-500'}">${b.status === 'Available' ? 'Issue' : 'Return'}</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderStudents() {
+            const grid = document.getElementById('students-grid');
+            grid.innerHTML = db.students.map(s => `
+                <div class="glass-panel p-6 rounded-2xl shadow-sm flex items-center gap-4 hover:-translate-y-1 transition duration-300">
+                    <div class="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl shadow-md">${s.name.charAt(0)}</div>
+                    <div><h4 class="font-bold text-lg dark:text-white leading-tight">${s.name}</h4><p class="text-xs text-gray-500">${s.email}</p><span class="inline-block mt-2 text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-medium">${s.dept}</span></div>
+                </div>
+            `).join('');
+        }
+
+        // --- UTILS ---
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.querySelector('button[onclick="toggleTheme()"] i');
+            icon.className = isDark ? "fa-solid fa-sun text-yellow-400" : "fa-solid fa-moon text-gray-600";
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+
+        function router(viewId) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`#nav-${viewId}`).classList.add('active');
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            document.getElementById('page-title').innerText = viewId.charAt(0).toUpperCase() + viewId.slice(1);
+            renderAll();
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        window.onload = () => {
+            if(localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
+            initApp();
+        };
+    </script>
+    <style>
+        .modal-input { width: 100%; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; outline: none; transition: 0.2s; }
+        .modal-input:focus { border-color: #6366f1; }
+        .dark .modal-input { background: #334155; border-color: #475569; color: white; }
+    </style>
+</body>
+</html>
