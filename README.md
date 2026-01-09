@@ -110,6 +110,8 @@ If you wish to deploy this architecture, follow these steps:
 5. **Launch:**
    Visit `http://YOUR_PUBLIC_IP/` to see the live dashboard.
 
+   for the demo video, checkout this link=https://drive.google.com/drive/folders/1Cw_Sq_hix9JxuSY21nZHsj5TBTTn678P?usp=sharing
+
 ---
 
 ### 📜 License
