@@ -22,8 +22,6 @@ This project demonstrates a full migration strategy: moving from a local develop
 
 The infrastructure was designed using the **AWS Well-Architected Framework**, focusing on security and reliability.
 
-![Architecture Diagram](./architecture-diagram.jpg)
-*(Note: Replace this path with your actual image file)*
 
 ### **Infrastructure Components:**
 
